@@ -9,3 +9,11 @@ __pycache__/
 # SLURM outputs
 slurm_*.out
 slurm_*.err
+
+# Model checkpoints and large outputs
+results/**/*.pt
+results/**/*.p
+results/**/optimizer_state_*
+results/slurm_*.out
+results/slurm_*.err
+*.slurm
