@@ -1,0 +1,243 @@
+# Neural Hydrology Setup Guide for UofU CHPC
+
+This guide will help you set up the neuralhydrology environment on CHPC for hydrological
+modeling research, and orient you to the notebook workflow for CARAVAN-based LSTM training.
+
+## Prerequisites
+- Access to University of Utah CHPC
+- VS Code with Remote Tunnel extension (optional but recommended)
+
+## Step 1: Connect to CHPC
+
+## Step 2: Navigate to Your Project Directory
+
+Replace `[YourFolder]` with your own folder name (e.g. `Meyer`):
+
+```bash
+cd /uufs/chpc.utah.edu/common/home/civil-group1/[YourFolder]
+```
+
+## Step 3: Create Project Structure
+
+```bash
+mkdir -p neuralhydrology_project
+cd neuralhydrology_project
+mkdir -p configs data results notebooks environments
+```
+
+This creates:
+- `configs/` — neuralhydrology configuration YAML files
+- `data/` — basin lists and processed data
+- `results/` — model outputs, checkpoints, evaluation metrics, figures
+- `notebooks/` — Jupyter notebooks (see Notebook Workflow below)
+- `environments/` — conda environment files
+
+## Step 4: Set Up Conda Environment
+
+### Load miniconda module
+```bash
+module load miniconda3/25.9.1
+```
+
+### Accept conda Terms of Service (first time only)
+```bash
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+```
+
+### Create the neuralhydrology environment
+```bash
+conda create -n neuralhydrology python=3.11 -y
+```
+
+### Activate the environment
+```bash
+conda activate neuralhydrology
+```
+
+Your prompt should now show `(neuralhydrology)` at the beginning.
+
+## Step 5: Install Required Packages
+
+### Install neuralhydrology
+```bash
+pip install neuralhydrology
+```
+
+This installs PyTorch (with CUDA support), numpy, pandas, matplotlib, and all
+core dependencies. Installation takes 5–10 minutes.
+
+### Install additional packages required by the notebooks
+```bash
+pip install geopandas contextily ruamel.yaml
+```
+
+- `geopandas` — basin boundary shapefile loading and spatial operations
+- `contextily` — basemap tiles for geographic visualization
+- `ruamel.yaml` — YAML config writing with preserved formatting
+
+## Step 6: Verify Installation
+```bash
+pip show neuralhydrology
+```
+
+You should see version 1.13.0 or newer.
+
+## Step 7: Save Environment Configuration
+```bash
+conda env export > environments/neuralhydrology_env.yml
+```
+
+This allows others to recreate your exact environment later.
+
+---
+
+## Notebook Workflow
+
+The analysis is organized into four sequential notebooks. Work through them in order:
+
+| Notebook | Purpose |
+|---|---|
+| `01_explore_caravan_dataset.ipynb` | Understand CARAVAN directory structure, attribute files, timeseries format, and visualize a local Utah basin |
+| `02_neural_hydrology_caravan_setup.ipynb` | Identify snow-dominated basins, write the neuralhydrology config, and submit the SLURM training job |
+| `03_lstm_initial_performance.ipynb` | Evaluates and visualizes LSTM performance across the validation/test time period (not the hold out) |
+| `04_evaluate_caravan_model.ipynb` | Identify the best training epoch and submit the SLURM evaluation job |
+| `05_visualize_model_performance.ipynb` | Load evaluation metrics, visualize performance distributions, maps, and hydrographs |
+
+> **Note:** All notebooks define `PROJECT_DIR` at the top. Update this path to your
+> own project directory before running. All other paths are derived from it automatically.
+
+---
+
+## Available Data
+
+### CARAVAN Dataset (primary training data)
+```
+/uufs/chpc.utah.edu/common/home/johnsonrc-group1/CARAVAN/CARAVAN_data/
+```
+
+Key subdirectories:
+- `timeseries/csv/{region}/` — daily ERA5-Land forcing + streamflow, one CSV per basin
+- `attributes/{region}/` — static basin attributes (climate, geomorphology, gauge metadata)
+- `shapefiles/{region}/` — basin boundary polygons
+
+Regions available: `camels`, `camelsaus`, `camelsbr`, `camelscl`, `camelsgb`, `hysets`, `lamah`
+
+> **Do NOT duplicate this dataset.** It is shared across the group. Read from this
+> path directly in all notebooks and configs.
+
+### CAMELS Dataset (US only, for reference)
+```
+/uufs/chpc.utah.edu/common/home/civil-group1/CAMELS/
+```
+
+Key files:
+- `basin_dataset_public_v1p2/` — extracted timeseries and forcing data
+- `camels_clim.txt` — climate attributes (includes `frac_snow`)
+- `camels_topo.txt` — topographic attributes
+- `camels_hydro.txt` — hydrologic signatures
+- `camels_geol.txt` — geological attributes
+- `camels_soil.txt` — soil attributes
+- `camels_vege.txt` — vegetation attributes
+
+---
+
+## Usage Tips
+
+### Starting a New Session
+1. Request a CHPC job allocation
+2. Load miniconda: `module load miniconda3/25.9.1`
+3. Activate environment: `conda activate neuralhydrology`
+4. Navigate to project: `cd /uufs/chpc.utah.edu/common/home/civil-group1/[YourFolder]/neuralhydrology_project`
+
+### Submitting SLURM Jobs
+Training and evaluation scripts are generated by the notebooks and saved to the
+project root. Always `cd` into the project directory before submitting:
+
+```bash
+cd /uufs/chpc.utah.edu/common/home/civil-group1/[YourFolder]/neuralhydrology_project
+sbatch train_caravan_snow.slurm       # submit training job
+sbatch evaluate_caravan_snow.slurm   # submit evaluation job (after training completes)
+```
+
+### Monitoring Jobs
+```bash
+squeue -u $USER                             # check job status
+tail -f results/slurm_<JOBID>.out           # stream training log
+tail -f results/slurm_eval_<JOBID>.out      # stream evaluation log
+```
+
+### Ending Your Session
+```bash
+conda deactivate   # deactivate environment
+exit               # exit job allocation
+```
+
+### Recreating the Environment (if needed)
+```bash
+conda env create -f environments/neuralhydrology_env.yml
+```
+
+---
+
+## Storage Guidelines
+
+| Location | Purpose | Notes |
+|---|---|---|
+| `civil-group1/[YourFolder]/` | Your code, configs, notebooks, results | Limited storage — do not store raw datasets here |
+| `johnsonrc-group1/CARAVAN/` | Shared CARAVAN dataset | Do NOT duplicate |
+| `civil-group1/CAMELS/` | Shared CAMELS-US dataset | Do NOT duplicate |
+
+---
+
+## Troubleshooting
+
+### VS Code won't connect to tunnel
+- Check that your CHPC job is still running: `squeue -u [unid]`
+- Verify tunnel is running in terminal
+- Try reloading the VS Code window
+- Check bottom-left corner shows tunnel connection
+
+### "conda: command not found"
+```bash
+module load miniconda3/25.9.1
+```
+
+### Environment activation doesn't work
+Make sure you loaded the miniconda module first.
+
+### Import errors in Python
+Make sure you activated the environment:
+```bash
+conda activate neuralhydrology
+```
+
+### geopandas or contextily not found
+```bash
+pip install geopandas contextily ruamel.yaml
+```
+
+### SLURM job fails immediately
+Check the `.err` file in `results/`:
+```bash
+cat results/slurm_<JOBID>.err
+```
+Common causes: wrong partition name, environment not activated, config path incorrect.
+
+---
+
+## Additional Resources
+
+- neuralhydrology documentation: https://neuralhydrology.readthedocs.io/
+- CARAVAN dataset paper: Kratzert et al. (2023), https://doi.org/10.5194/hess-27-5517-2023
+- CAMELS dataset info: https://ral.ucar.edu/solutions/products/camels
+- CHPC documentation: https://www.chpc.utah.edu/documentation/
+
+---
+
+## Contact
+
+For questions about this setup, contact Kaitlin Meyer or Dr. Ryan Johnson.
+
+---
+*Last updated: February 2026*

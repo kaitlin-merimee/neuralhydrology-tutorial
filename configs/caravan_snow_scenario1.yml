@@ -1,0 +1,60 @@
+experiment_name: caravan_snow_global_scenario1
+run_dir: 
+  /uufs/chpc.utah.edu/common/home/civil-group1/Meyer/neuralhydrology_project/results/caravan_snow_global_scenario1
+train_basin_file: 
+  /uufs/chpc.utah.edu/common/home/civil-group1/Meyer/neuralhydrology_project/data/caravan_snow_basins.txt
+validation_basin_file: 
+  /uufs/chpc.utah.edu/common/home/civil-group1/Meyer/neuralhydrology_project/data/caravan_snow_basins.txt
+test_basin_file: 
+  /uufs/chpc.utah.edu/common/home/civil-group1/Meyer/neuralhydrology_project/data/caravan_snow_basins.txt
+train_start_date: 01/01/1990
+train_end_date: 31/12/2010
+validation_start_date: 01/01/2011
+validation_end_date: 31/12/2015
+test_start_date: 01/01/2016
+test_end_date: 31/12/2020
+dataset: caravan
+data_dir: /uufs/chpc.utah.edu/common/home/johnsonrc-group1/CARAVAN/CARAVAN_data
+model: cudalstm
+head: regression
+output_activation: linear
+hidden_size: 128
+initial_forget_bias: 3
+output_dropout: 0.4
+dynamic_inputs:
+- total_precipitation_sum
+- temperature_2m_max
+- temperature_2m_min
+- surface_net_solar_radiation_mean
+target_variables:
+- streamflow
+clip_targets_to_zero:
+- streamflow
+optimizer: Adam
+loss: MSE
+epochs: 30
+learning_rate:
+  0: 0.001
+  10: 0.0005
+  20: 0.0001
+batch_size: 256
+clip_gradient_norm: 1.0
+seq_length: 365
+predict_last_n: 1
+validate_every: 1
+validate_n_random_basins: 10
+cache_validation_data: true
+metrics:
+- NSE
+- MSE
+- KGE
+- Alpha-NSE
+- Beta-NSE
+device: cuda:0
+num_workers: 8
+seed: 42
+log_interval: 50
+log_tensorboard: true
+log_n_figures: 5
+save_weights_every: 1
+save_validation_results: true

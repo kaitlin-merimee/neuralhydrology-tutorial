@@ -1,0 +1,11 @@
+# Large model outputs - too big for GitHub
+results/caravan_snow_global_scenario1/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# SLURM outputs
+slurm_*.out
+slurm_*.err
